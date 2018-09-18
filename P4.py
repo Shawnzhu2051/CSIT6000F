@@ -1,11 +1,15 @@
 import csv
 import random
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
 
-NODE_NUM = 5
-SWAP_RATE = 5  # the number of swap feature in crossover function (1 - 9)
-MUTATION_THRESHOLD = 0  # the threshold that mutation occurs
+NODE_NUM = 100
+# SWAP_RATE = 5  # the number of swap feature in crossover function (1 - 9)
+MUTATION_THRESHOLD = 0.1  # the threshold that mutation occurs
 MUTATION_RATE = 1  # the number of mutate feature in mutation function (1 - 9)
-ITERATIVE_TIME = 10
+CROSSOVER_TIME = 60 # the number of crossover occur in one generation
+ITERATIVE_TIME = 2500
 
 training_set = []
 label_set = []
@@ -25,7 +29,8 @@ class Node(object):
     def fitness(self):
         self.fitness_score = 0
         for test_num in range(49):
-            self.fitness_score += self.is_active(test_num)
+            if self.is_active(test_num) == label_set[test_num]:
+                self.fitness_score += 1
 
     def is_active(self,test_num):
         sum = 0
@@ -52,7 +57,8 @@ class GeneticAlg(object):
             node.fitness()
             self.node_fitness_dict[node.id] = node.fitness_score
             ave_fitness_score += node.fitness_score
-        print('average fitness score is ' + str(ave_fitness_score/NODE_NUM))
+        ave_fitness_score = ave_fitness_score / NODE_NUM
+        return ave_fitness_score
 
 
     def choose_parent(self):
@@ -65,23 +71,29 @@ class GeneticAlg(object):
                 count += 1
         parent1_id = self.rouletteWheel[random.randint(0, count-1)]
         parent2_id = self.rouletteWheel[random.randint(0, count-1)]
-        return parent1_id, parent2_id  # need one more attribute
+        knockout_id = min(self.node_fitness_dict, key=self.node_fitness_dict.get)
+        return parent1_id, parent2_id, knockout_id
 
-    def crossover(self):
-        (parent1_id, parent2_id) = self.choose_parent()
-        parent_node1 = self.find_node_by_id(parent1_id)
-        parent_node2 = self.find_node_by_id(parent2_id)
-        print(parent_node1.fitness_score)
-        print(parent_node2.fitness_score)
-        if parent_node1 == -1 or parent_node2 == -1:
-            print("node not found !")
-        for swap_time in range(SWAP_RATE):
-            swap_location = random.randint(0, 9)
-            temp = parent_node1.w_list[swap_location]
-            parent_node1.w_list[swap_location] = parent_node2.w_list[swap_location]
-            parent_node2.w_list[swap_location] = temp
-        self.mutation(parent_node1)
-        self.mutation(parent_node2)
+
+
+    def crossover(self, CROSSOVER_TIME):
+        for time in range(CROSSOVER_TIME):
+            (parent1_id, parent2_id, knockout_id) = self.choose_parent()
+            parent_node1 = self.find_node_by_id(id=parent1_id)
+            parent_node2 = self.find_node_by_id(id=parent2_id)
+            knockout_node = self.find_node_by_id(id=knockout_id)
+            if parent_node1 == -1 or parent_node2 == -1 or knockout_node == -1:
+                print("node not found !")
+            if parent_node1.fitness_score > parent_node2.fitness_score:
+                crossover_location = random.randint(5,9)
+            else:
+                crossover_location = random.randint(1,5)
+            for swap_location in range(10):  # single crossover point
+                if swap_location <= crossover_location:
+                    knockout_node.w_list[swap_location] = parent_node1.w_list[swap_location]
+                else:
+                    knockout_node.w_list[swap_location] = parent_node2.w_list[swap_location]
+            self.mutation(node=knockout_node)
 
     def find_node_by_id(self, id):
         for node in self.node_list:
@@ -95,9 +107,6 @@ class GeneticAlg(object):
                 mutation_location = random.randint(0,9)
                 node.w_list[mutation_location] = 2 * random.random() - 1
 
-    def replace(self):  # use new son to replace the last one in fitness score
-        pass
-
 if __name__ == '__main__':
     with open('training-set.csv') as f:
         reader = csv.reader(f)
@@ -106,11 +115,39 @@ if __name__ == '__main__':
             label_set.append(int(row[-1]))
 
     GA = GeneticAlg()
-    for num in range(ITERATIVE_TIME):
-        GA.compute_fitness()
-        GA.crossover()
-    #print(GA.rouletteWheel)
+    last_ave_score = 0
 
-    #for (key,value) in GA.node_fitness_dict.items():
-    #    print(key)
-    #    print(value)
+    #plt.figure(figsize=(8, 6), dpi=80)
+    #plt.ion()
+    #plot_x = []
+    #plot_y = []
+
+    for num in range(ITERATIVE_TIME):
+        ave_score = GA.compute_fitness()
+
+        #plt.cla()
+        #plt.title("Converage Graph")
+        #plt.grid(True)
+        #plot_x.append(num)
+        #plot_y.append(ave_score)
+
+        #plt.plot(plot_x, plot_y, "b-", linewidth=2.0, label="average correct rate")
+
+        #plt.xlabel("Generation")
+        #plt.xlim(0, ITERATIVE_TIME)
+        #plt.ylabel("Average fitness score")
+        #plt.ylim(0, 50)
+        #plt.pause(0.1)
+
+        print("Epoch " + str(num) + ', average fitness score is ' + str(ave_score))
+        GA.crossover(CROSSOVER_TIME=CROSSOVER_TIME)
+        if ave_score == 49 and ave_score - last_ave_score < 0.0001:
+            break
+        else:
+            last_ave_score = ave_score
+
+    #plt.ioff()
+    #plt.show()
+
+    final_w_list = GA.node_list[0].w_list
+    print("The final weight list is " + str(final_w_list))

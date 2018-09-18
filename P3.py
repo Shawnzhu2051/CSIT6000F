@@ -37,7 +37,7 @@ class TLU(object):
 
 tlu = TLU()
 
-for time in range(100):
+for time in range(10):
     print("Epoch " + str(time))
     tlu.print_weight()
     input1 = random.randint(0, 1)
