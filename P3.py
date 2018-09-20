@@ -18,7 +18,7 @@ class TLU(object):
 
     def active(self):
         vector = self.x1 * self.w1 + self.x2 * self.w2 + self.x3 * self.w3
-        if(vector - self.threshold > 0.0001):
+        if(vector - self.threshold >= 0):
             return 1
         else:
             return 0
@@ -37,20 +37,22 @@ class TLU(object):
 
 tlu = TLU()
 
-for time in range(10):
-    print("Epoch " + str(time))
-    tlu.print_weight()
-    input1 = random.randint(0, 1)
-    input2 = random.randint(0, 1)
+input = [0,0,1,0,0,1,1,1]
+for time in range(20):
+    print("Round " + str(time//4) + ", epoch " + str(time%4))
+    #tlu.print_weight()
+    input1 = input[2*(time)%8]
+    input2 = input[2*(time)%8+1]
     tlu.input_train(input1, input2)
     print("input is " + str(input1) + " " + str(input2) + " 1")
     output = tlu.active()
     print("output is " + str(output))
-    if(input1 | input2 == tlu.active()):
-        print("Right!")
-    else:
-        print("Wrong!")
+    #if(input1 | input2 == tlu.active()):
+    #    print("Right!")
+    #else:
+    #    print("Wrong!")
     tlu.error_correction(output)
+    tlu.print_weight()
     print("-------------------------------")
 # we want
 # TLU(1,1).output = 1
